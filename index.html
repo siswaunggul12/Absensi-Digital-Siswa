@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Digital - XII MIPA-1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .student-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .status-btn {
+            transition: all 0.2s ease;
+        }
+        .status-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+        }
+        .status-btn:disabled {
+            cursor: not-allowed;
+            background-color: #bdc3c7;
+        }
+        .status-hadir { background-color: #2ecc71; color: white; }
+        .status-sakit { background-color: #f1c40f; color: white; }
+        .status-izin { background-color: #3498db; color: white; }
+        .status-alfa { background-color: #e74c3c; color: white; }
+
+        .card-alfa {
+            animation: shake 0.5s;
+            background-color: #fadbd8;
+        }
+
+        .grayscale-other {
+            filter: grayscale(80%);
+            opacity: 0.7;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 2rem;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 1rem;
+            animation: slideIn 0.4s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-btn:hover,
+        .close-btn:focus {
+            color: black;
+        }
+
+        #rekap-table th, #rekap-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .no-print {}
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-700">Absensi Digital Siswa</h1>
+            <h2 class="text-xl md:text-2xl font-semibold text-blue-600">Kelas XII MIPA-1 SMAN Unggul Pidie Jaya</h2>
+            <p id="current-date" class="text-lg text-gray-500 mt-2"></p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="flex flex-wrap justify-center gap-3 mb-8">
+            <button id="add-student-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-user-plus mr-2"></i>Tambah Siswa
+            </button>
+            <button id="edit-data-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-edit mr-2"></i>Edit Data Siswa
+            </button>
+            <button id="rekap-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-chart-bar mr-2"></i>Lihat Rekap Bulanan
+            </button>
+             <button onclick="showInfo()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-globe mr-2"></i>Publikasikan Web
+            </button>
+        </div>
+
+        <!-- Student Grid -->
+        <div id="student-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <!-- Kartu siswa akan di-generate oleh JavaScript -->
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="add-student-modal" class="modal">
+        <div class="modal-content max-w-lg">
+            <span class="close-btn" id="close-add-modal">&times;</span>
+            <h2 class="text-2xl font-bold mb-6">Tambah Siswa Baru</h2>
+            <form id="add-student-form">
+                <div class="mb-4">
+                    <label for="new-student-name" class="block text-gray-700 text-sm font-bold mb-2">Nama Siswa</label>
+                    <input type="text" id="new-student-name" placeholder="Masukkan nama siswa" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                </div>
+                <div class="mb-6">
+                    <label for="new-student-photo" class="block text-gray-700 text-sm font-bold mb-2">Foto Siswa (Opsional)</label>
+                    <input type="file" id="new-student-photo" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*">
+                </div>
+                <div class="flex items-center justify-end gap-4">
+                    <button type="button" id="cancel-add-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">
+                        Batal
+                    </button>
+                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">
+                        Tambah
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Student Data Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-edit-modal">&times;</span>
+            <h2 class="text-2xl font-bold mb-6">Edit Data Siswa</h2>
+            <div id="edit-student-list" class="space-y-4 max-h-96 overflow-y-auto pr-4">
+                <!-- List siswa untuk diedit akan di-generate oleh JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rekap Modal -->
+    <div id="rekap-modal" class="modal">
+        <div id="rekap-modal-content" class="modal-content">
+            <span class="close-btn no-print" id="close-rekap-modal">&times;</span>
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold">REKAPITULASI KEHADIRAN SISWA</h2>
+                <h3 class="text-xl font-semibold">KELAS XII MIPA-1 SMAN UNGGUL PIDIE JAYA</h3>
+                <p id="rekap-bulan" class="text-lg"></p>
+            </div>
+            <div class="overflow-x-auto">
+                <table id="rekap-table" class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Siswa</th>
+                            <th>H</th>
+                            <th>S</th>
+                            <th>I</th>
+                            <th>A</th>
+                            <th>% Hadir</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekap-table-body">
+                        <!-- Data rekap akan di-generate oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="rekap-summary" class="mt-4 text-right font-semibold"></div>
+            <div class="flex justify-between items-end mt-16">
+                 <div>
+                    <button id="print-btn" class="no-print bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                        <i class="fas fa-print mr-2"></i>Cetak Hasil Rekap
+                    </button>
+                </div>
+                <div class="text-center">
+                    <p>Pidie Jaya, <span id="rekap-tanggal-ttd"></span></p>
+                    <p>Wali Kelas XII MIPA-1,</p>
+                    <div class="h-20"></div>
+                    <p class="font-bold">(...........................................)</p>
+                    <p class="text-sm">Nama Jelas & NIP/NUPTK</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content max-w-md">
+            <span class="close-btn" onclick="document.getElementById('info-modal').style.display='none'">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">Publikasikan Web</h2>
+            <p>Fitur ini bersifat konseptual.</p>
+            <p class="mt-2">Untuk mempublikasikan absensi ini sebagai web, Anda perlu mengunggah file HTML ini ke layanan hosting web seperti GitHub Pages, Netlify, atau Vercel. Setelah diunggah, Anda akan mendapatkan tautan publik yang bisa dibagikan.</p>
+             <button onclick="document.getElementById('info-modal').style.display='none'" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Mengerti</button>
+        </div>
+    </div>
+
+<script>
+// --- INITIAL DATA & SETUP ---
+const today = new Date();
+const todayString = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+const initialStudents = [
+    { id: 1, name: 'ANNISA ZAKKYA', photo: '' }, { id: 2, name: 'DZASKYA QUANESA', photo: '' },
+    { id: 3, name: 'FADEL YANUARDIANSYAH NASLA', photo: '' }, { id: 4, name: 'FADHIL', photo: '' },
+    { id: 5, name: 'FIRATUN NISA', photo: '' }, { id: 6, name: 'GHINATUL AURA', photo: '' },
+    { id: 7, name: 'IZZAH FARHANI', photo: '' }, { id: 8, name: 'MIFTAHUL JANNAH', photo: '' },
+    { id: 9, name: 'MISTAHUL RISKA', photo: '' }, { id: 10, name: 'MUBARAQ SYARIF', photo: '' },
+    { id: 11, name: 'MUGHAYAT SYAH MULYA', photo: '' }, { id: 12, name: 'MUHAMMAD NUR HAFIZ', photo: '' },
+    { id: 13, name: 'NAUFA ULYA', photo: '' }, { id: 14, name: 'NAYLA HARIRA', photo: '' },
+    { id: 15, name: 'NURMASYITAH', photo: '' }, { id: 16, name: 'PUTRI JELITA', photo: '' },
+    { id: 17, name: 'RITA', photo: '' }, { id: 18, name: 'RIZKA RUMAISYA', photo: '' },
+    { id: 19, name: 'SHAIMA RANIYA', photo: '' }, { id: 20, name: 'YULISMA', photo: '' },
+    { id: 21, name: 'ZULAICHA RIFERA', photo: '' }, { id: 22, name: 'NELI NADIA', photo: '' },
+    { id: 23, name: 'AKHYAR', photo: '' }, { id: 24, name: 'AKMALIATUN NISA', photo: '' },
+    { id: 25, name: 'ANNA ALTHAFUNNISA', photo: '' }, { id: 26, name: 'ANNISA MUS\'IDA', photo: '' },
+    { id: 27, name: 'FAIZAH MUNIRAH', photo: '' }, { id: 28, name: 'LIZZANNA ALFIRA', photo: '' },
+    { id: 29, name: 'MAHMUDA', photo: '' }, { id: 30, name: 'M.FAIZ ULWAN', photo: '' },
+    { id: 31, name: 'FULKA BILLAH', photo: '' }
+];
+
+let students = JSON.parse(localStorage.getItem('students_data_v2')) || initialStudents;
+let attendance = JSON.parse(localStorage.getItem('attendance_data_v2')) || {};
+
+function saveData() {
+    localStorage.setItem('students_data_v2', JSON.stringify(students));
+    localStorage.setItem('attendance_data_v2', JSON.stringify(attendance));
+}
+
+// --- RENDERING FUNCTIONS ---
+function renderStudentGrid() {
+    const grid = document.getElementById('student-grid');
+    grid.innerHTML = '';
+    students.forEach(student => {
+        const statusToday = attendance[todayString]?.[student.id] || 'H';
+        const card = document.createElement('div');
+        card.className = 'student-card bg-white rounded-xl shadow-lg p-4 text-center';
+        card.id = `card-${student.id}`;
+        const photoSrc = student.photo || `https://placehold.co/100x100/EBF4FF/76A9EA?text=${student.name.charAt(0)}`;
+        card.innerHTML = `
+            <img src="${photoSrc}" alt="Foto ${student.name}" class="w-24 h-24 mx-auto rounded-full object-cover border-4 border-gray-200">
+            <h3 class="mt-4 font-bold text-md">${student.name}</h3>
+            <div class="flex justify-center gap-2 mt-4">
+                <button class="status-btn w-8 h-8 rounded-full font-bold status-hadir" onclick="markAttendance(${student.id}, 'H')">H</button>
+                <button class="status-btn w-8 h-8 rounded-full font-bold status-sakit" onclick="markAttendance(${student.id}, 'S')">S</button>
+                <button class="status-btn w-8 h-8 rounded-full font-bold status-izin" onclick="markAttendance(${student.id}, 'I')">I</button>
+                <button class="status-btn w-8 h-8 rounded-full font-bold status-alfa" onclick="markAttendance(${student.id}, 'A')">A</button>
+            </div>
+        `;
+        grid.appendChild(card);
+        updateCardStatus(student.id, statusToday);
+    });
+}
+
+function updateCardStatus(studentId, status) {
+    const card = document.getElementById(`card-${studentId}`);
+    if (!card) return;
+    card.classList.remove('card-alfa');
+    document.querySelectorAll('.student-card').forEach(c => c.classList.remove('grayscale-other'));
+    const buttons = card.querySelectorAll('.status-btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500');
+        if (btn.innerText === status) {
+            let ringColorClass = 'ring-blue-500';
+            if (status === 'H') ringColorClass = 'ring-green-500';
+            if (status === 'S') ringColorClass = 'ring-yellow-500';
+            if (status === 'I') ringColorClass = 'ring-blue-500';
+            if (status === 'A') ringColorClass = 'ring-red-500';
+            btn.classList.add('ring-4', 'ring-offset-2', ringColorClass);
+        }
+    });
+    if (status === 'A') {
+        card.classList.add('card-alfa');
+        document.querySelectorAll('.student-card').forEach(c => {
+            if (c.id !== `card-${studentId}`) {
+                c.classList.add('grayscale-other');
+            }
+        });
+    }
+}
+
+// --- ATTENDANCE LOGIC ---
+function markAttendance(studentId, status) {
+    if (!attendance[todayString]) {
+        attendance[todayString] = {};
+    }
+    attendance[todayString][studentId] = status;
+    updateCardStatus(studentId, status);
+    saveData();
+}
+
+// --- MODAL LOGIC ---
+const addStudentModal = document.getElementById('add-student-modal');
+const editModal = document.getElementById('edit-modal');
+const rekapModal = document.getElementById('rekap-modal');
+const infoModal = document.getElementById('info-modal');
+
+document.getElementById('add-student-btn').onclick = () => {
+    addStudentModal.style.display = 'block';
+};
+document.getElementById('close-add-modal').onclick = () => {
+    addStudentModal.style.display = 'none';
+};
+document.getElementById('cancel-add-btn').onclick = () => {
+    addStudentModal.style.display = 'none';
+};
+document.getElementById('add-student-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newName = document.getElementById('new-student-name').value.trim();
+    const newPhotoInput = document.getElementById('new-student-photo');
+    if (!newName) {
+        alert('Nama siswa tidak boleh kosong.');
+        return;
+    }
+
+    const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
+    const newStudent = { id: newId, name: newName, photo: '' };
+
+    if (newPhotoInput.files && newPhotoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            newStudent.photo = event.target.result;
+            students.push(newStudent);
+            saveData();
+            renderStudentGrid();
+        };
+        reader.readAsDataURL(newPhotoInput.files[0]);
+    } else {
+        students.push(newStudent);
+        saveData();
+        renderStudentGrid();
+    }
+
+    addStudentModal.style.display = 'none';
+    e.target.reset();
+});
+
+
+document.getElementById('edit-data-btn').onclick = () => {
+    const list = document.getElementById('edit-student-list');
+    list.innerHTML = '';
+    students.forEach(student => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-4 p-2 bg-gray-50 rounded-lg';
+        item.innerHTML = `
+            <img src="${student.photo || `https://placehold.co/60x60/EBF4FF/76A9EA?text=${student.name.charAt(0)}`}" id="img-preview-${student.id}" class="w-16 h-16 rounded-full object-cover">
+            <input type="text" value="${student.name}" id="input-name-${student.id}" class="flex-grow p-2 border rounded-md">
+            <label for="input-photo-${student.id}" class="cursor-pointer bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm">Ubah Foto</label>
+            <input type="file" id="input-photo-${student.id}" class="hidden" accept="image/*" onchange="handlePhotoChange(event, ${student.id})">
+            <button onclick="saveStudentChange(${student.id})" class="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 text-sm">Simpan</button>
+        `;
+        list.appendChild(item);
+    });
+    editModal.style.display = 'block';
+};
+
+document.getElementById('close-edit-modal').onclick = () => {
+    editModal.style.display = 'none';
+    renderStudentGrid();
+};
+
+function handlePhotoChange(event, studentId) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById(`img-preview-${studentId}`).src = e.target.result;
+            const student = students.find(s => s.id === studentId);
+            student.photo = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function saveStudentChange(studentId) {
+    const student = students.find(s => s.id === studentId);
+    const newName = document.getElementById(`input-name-${studentId}`).value;
+    student.name = newName;
+    saveData();
+    const btn = event.target;
+    btn.innerText = 'Tersimpan!';
+    btn.classList.remove('bg-green-500');
+    btn.classList.add('bg-gray-400');
+    setTimeout(() => {
+        btn.innerText = 'Simpan';
+        btn.classList.add('bg-green-500');
+        btn.classList.remove('bg-gray-400');
+    }, 1500);
+}
+
+document.getElementById('rekap-btn').onclick = () => {
+    const body = document.getElementById('rekap-table-body');
+    body.innerHTML = '';
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    let effectiveDays = 0;
+    const rekapData = {};
+    for(let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const dateString = date.toISOString().split('T')[0];
+        if (date.getDay() !== 0 && date.getDay() !== 6) { 
+             if (attendance[dateString]) {
+                effectiveDays++;
+                students.forEach(student => {
+                    if (!rekapData[student.id]) {
+                        rekapData[student.id] = { H: 0, S: 0, I: 0, A: 0 };
+                    }
+                    const status = attendance[dateString][student.id] || 'A';
+                    rekapData[student.id][status]++;
+                });
+             }
+        }
+    }
+    students.forEach((student, index) => {
+        const data = rekapData[student.id] || { H: 0, S: 0, I: 0, A: 0 };
+        const totalHadir = data.H;
+        const percentage = effectiveDays > 0 ? ((totalHadir / effectiveDays) * 100).toFixed(1) : 0;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="text-center">${index + 1}</td>
+            <td class="font-semibold">${student.name}</td>
+            <td class="text-center text-green-600 font-bold">${data.H}</td>
+            <td class="text-center text-yellow-600 font-bold">${data.S}</td>
+            <td class="text-center text-blue-600 font-bold">${data.I}</td>
+            <td class="text-center text-red-600 font-bold">${data.A}</td>
+            <td class="text-center font-bold ${percentage < 85 ? 'text-red-500' : 'text-green-500'}">${percentage}%</td>
+        `;
+        body.appendChild(row);
+    });
+    document.getElementById('rekap-bulan').innerText = `Bulan: ${today.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`;
+    document.getElementById('rekap-tanggal-ttd').innerText = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('rekap-summary').innerText = `Total Hari Efektif Sekolah (tercatat): ${effectiveDays} hari`;
+    rekapModal.style.display = 'block';
+};
+
+document.getElementById('close-rekap-modal').onclick = () => rekapModal.style.display = 'none';
+
+function printRekap() {
+    const rekapContent = document.getElementById('rekap-modal-content').cloneNode(true);
+    rekapContent.querySelectorAll('.no-print').forEach(el => el.remove());
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    printWindow.document.write('<html><head><title>Cetak Rekap Absensi</title>');
+    printWindow.document.write(`
+        <style>
+            body { font-family: 'Poppins', sans-serif; padding: 1.5rem; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 8px 12px; text-align: left; border: 1px solid #ddd; }
+            thead { background-color: #f3f4f6; }
+            .text-center { text-align: center; } .font-bold { font-weight: 700; } .font-semibold { font-weight: 600; }
+            .text-xl { font-size: 1.25rem; } .text-2xl { font-size: 1.5rem; } .mb-6 { margin-bottom: 1.5rem; }
+            .mt-4 { margin-top: 1rem; } .mt-16 { margin-top: 4rem; } .text-right { text-align: right; }
+            .flex { display: flex; } .justify-between { justify-content: space-between; } .items-end { align-items: flex-end; }
+            .h-20 { height: 5rem; } .text-sm { font-size: 0.875rem; }
+        </style>
+    `);
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(rekapContent.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+}
+document.getElementById('print-btn').onclick = printRekap;
+
+function showInfo() {
+    infoModal.style.display = 'block';
+}
+
+window.onclick = (event) => {
+    if (event.target == addStudentModal) addStudentModal.style.display = 'none';
+    if (event.target == editModal) editModal.style.display = 'none';
+    if (event.target == rekapModal) rekapModal.style.display = 'none';
+    if (event.target == infoModal) infoModal.style.display = 'none';
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('current-date').innerText = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    renderStudentGrid();
+});
+</script>
+
+</body>
+</html>
